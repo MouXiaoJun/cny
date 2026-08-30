@@ -263,6 +263,42 @@ func TestConvertFloatCentsAgree(t *testing.T) {
 	}
 }
 
+func TestConvertFloatPrecisionBoundary(t *testing.T) {
+	cents := int64(7036874417766401)
+	exact, err := ConvertCents(cents)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := Convert(float64(cents) / 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// At 2^46 yuan, binary64 spacing is 0.015625 yuan: this one-cent
+	// fraction becomes 0.02 in the shortest round-trip decimal representation.
+	if !strings.HasSuffix(exact, "元零壹分") || !strings.HasSuffix(got, "元零贰分") {
+		t.Fatalf("float precision boundary: float=%q cents=%q", got, exact)
+	}
+}
+
+func TestAmountWritingExamples(t *testing.T) {
+	// 支付结算办法附一，PDF 第 69–70 页；只核对金额文本，不包含票据模板或合规审核。
+	// https://www.pbc.gov.cn/tiaofasi/144941/144957/3601571/2018081309061735002.pdf
+	// 可读交叉来源：北京市交通委招标文件第 40 页的金额书写范例。
+	// https://jtw.beijing.gov.cn/xxgk/ztbxx/202005/P020200528617926701667.pdf
+	for _, tc := range []struct {
+		cents int64
+		want  string
+	}{
+		{140950, "壹仟肆佰零玖元伍角"},
+		{600714, "陆仟零柒元壹角肆分"},
+		{1640902, "壹万陆仟肆佰零玖元零贰分"},
+	} {
+		if got, err := ConvertCents(tc.cents); err != nil || got != tc.want {
+			t.Errorf("ConvertCents(%d) = %q, %v; want %q", tc.cents, got, err, tc.want)
+		}
+	}
+}
+
 // TestConvertInvariants 输出结构不变量:只含合法字符、无连续"零"、"整"只出现在结尾。
 func TestConvertInvariants(t *testing.T) {
 	allowed := "零壹贰叁肆伍陆柒捌玖拾佰仟万亿角分元整负"

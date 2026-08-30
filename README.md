@@ -2,12 +2,14 @@
 
 Convert RMB amounts (元) to **Chinese uppercase financial numerals** (中文大写), for invoices, contracts, and expense reports.
 
+This library formats amount text only. It does not add the 人民币 prefix, validate document templates or certify legal compliance.
+
 - Module: `github.com/MouXiaoJun/cny`
 - Go 1.21+, zero dependencies (standard library only)
-- License: [Mulan PSL v2](LICENSE)
+- License: [MIT](LICENSE)
 
 ```go
-s, _ := cny.Convert(12345678.90)
+s, _ := cny.ConvertCents(1234567890) // exact integer cents
 fmt.Println(s) // 壹仟贰佰叁拾肆万伍仟陆佰柒拾捌元玖角
 ```
 
@@ -60,6 +62,18 @@ Digits: 零 壹 贰 叁 肆 伍 陆 柒 捌 玖; units: 拾 佰 仟 万 亿 万�
 - **Zero amount** — `0`, `0.00`, `-0.0` all give `零元整`.
 - **Negative** — prefixed with 负: `-100 → 负壹佰元整`.
 
+### Sourced amount examples
+
+The [PBOC appendix](https://www.pbc.gov.cn/tiaofasi/144941/144957/3601571/2018081309061735002.pdf) (PDF pages 69–70) gives amount-writing examples. A readable cross-reference is the [Beijing transport authority's tender appendix](https://jtw.beijing.gov.cn/xxgk/ztbxx/202005/P020200528617926701667.pdf) (printed page 40). These three examples are regression fixtures, excluding the 人民币 prefix that the caller's template must handle:
+
+| `ConvertCents` input | Amount text |
+| --- | --- |
+| `140950` | 壹仟肆佰零玖元伍角 |
+| `600714` | 陆仟零柒元壹角肆分 |
+| `1640902` | 壹万陆仟肆佰零玖元零贰分 |
+
+Checked on 2026-08-30. These fixtures are not a compliance audit. Negative amounts, omission of 零元 below one yuan, and large-number units 万亿/亿亿 are library conventions, not claims that every document accepts them.
+
 ## Precision
 
 Inputs with more than 2 decimals are **rounded to cents using the decimal representation** (third decimal ≥ 5 rounds up; applied to the absolute value, sign preserved):
@@ -71,11 +85,11 @@ Inputs with more than 2 decimals are **rounded to cents using the decimal repres
 | `0.999` | 壹元整 |
 | `-1.005` | 负壹元零壹分 |
 
-Rounding operates on the decimal form of the float (`strconv.FormatFloat`, shortest round-trip), *not* on `amount*100`, so `1.005 → 壹元零壹分` as expected in accounting. Note `float64` only carries ~15–16 significant decimal digits: cent-exactness is only guaranteed for `|amount| < 2⁵³/100 ≈ 9×10¹³` 元. For exact money, use `ConvertCents`.
+Rounding operates on the received float's shortest round-trip decimal form, *not* on `amount*100`. [strconv.FormatFloat](https://pkg.go.dev/strconv#FormatFloat) preserves that float, not the original decimal input or precision lost before the call. There is no cent-exact guarantee for all amounts below `2⁵³/100` yuan: around `2⁴⁶` yuan, adjacent float64 values are already 0.015625 yuan apart. For example, converting `int64(7036874417766401)` cents through `float64(cents)/100` produces an amount ending in 贰分, while `ConvertCents(cents)` ends in 壹分. Use `ConvertCents` directly for exact integer cents.
 
 ## Range
 
-Integer part up to 20 digits (incl. rounding carry), i.e. up to `99999999999999999999.99`; beyond that `ErrOutOfRange` is returned. `ConvertCents` covers the full `int64` range.
+The formatting limit is 20 integer digits, including rounding carry; beyond that `ErrOutOfRange` is returned. This is not a guarantee that float64 can represent every amount in that range. `ConvertCents` covers the full `int64` cent range.
 
 ## Naming
 
@@ -92,4 +106,4 @@ Tests cover whole/fraction/zero/negative/boundary/rounding cases, `Convert`/`Con
 
 ## License
 
-[Mulan PSL v2](LICENSE) © 2026 cny contributors
+[MIT](LICENSE) © 2026 cny contributors
