@@ -1,5 +1,7 @@
 # cny
 
+Maintenance scope: preserve the published API; focus on bug fixes, security and Go compatibility, with no planned API expansion.
+
 Convert RMB amounts (元) to **Chinese uppercase financial numerals** (中文大写), for invoices, contracts, and expense reports.
 
 This library formats amount text only. It does not add the 人民币 prefix, validate document templates or certify legal compliance.
